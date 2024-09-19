@@ -1,0 +1,51 @@
+name: INFRA - plan - NONPROD
+
+run-name: Validate Infra 
+on:
+  pull_request:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-plan
+  cancel-in-progress: false
+
+jobs:
+
+  locate_tf_file:
+    name: Find where do you plan
+    runs-on: ["linux"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: check_app_env
+        name: Match env with app
+        run: |
+          find ./infra -path './infra/_sharedservices' -prune -o -type f -name "*.tf" -print
+
+  call_terraform_router_shared_services:
+    name: Terraform Router
+    needs: locate_tf_file
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: test_file
+        name: Test file
+        run: |
+          ls ./infra/_sharedservices
+
+  call_terraform_router:
+    name: Terraform Router
+    needs: locate_tf_file
+    strategy:
+      matrix:
+        target: [dev, qa, prod]
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: test_file
+        name: Test file
+        run: |
+          ls ./infra/${{matrix.target}}
