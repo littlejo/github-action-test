@@ -1,0 +1,27 @@
+name: INFRA - plan shared services - NONPROD
+
+run-name: Validate Infra shared services
+on:
+  pull_request:
+    paths:
+    - 'infra/_sharedservices/*.tf'
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-plan
+  cancel-in-progress: false
+
+jobs:
+  call_terraform_router:
+    name: Terraform Router
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: test_file
+        name: Test file
+        run: |
+          ls ./infra/_sharedservices
