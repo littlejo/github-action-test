@@ -21,12 +21,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - id: check_app_env
         name: Match env with app
         run: |
-          dirs=$(find ./infra -path './infra/_sharedservices' -prune -o -type f -name "*.tf" -exec dirname {} \;)
-          matrix=$(echo "$dirs" | awk -F'/' '{printf("{\"environment\": \"%s\", \"scope\": \"%s\"}\n", $4, $3)}' | jq -c -s '.')
+          DEFAULT_BRANCH=$(LANG=C git remote show origin | grep 'HEAD branch:' | awk '{print $NF}')
+          BASE=$(git merge-base origin/$DEFAULT_BRANCH HEAD)
+          dirs=$(dirname $(git diff --name-only $BASE HEAD | grep 'infra' | grep '\.tf') | sort | uniq)
+          matrix=$(echo "$dirs" | awk -F'/' '{printf("{\"environment\": \"%s\", \"scope\": \"%s\"}\n", $3, $2)}' | jq -c -s '.')
           echo "myoutput=$matrix" >> $GITHUB_OUTPUT
     outputs:
       mymatrix: ${{ steps.check_app_env.outputs.myoutput }}
