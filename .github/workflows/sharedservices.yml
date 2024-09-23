@@ -17,11 +17,9 @@ concurrency:
 jobs:
   call_terraform_router:
     name: Terraform Router
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - id: test_file
-        name: Test file
-        run: |
-          ls ./infra/_sharedservices
+    uses: littlejo/github-action-test/.github/workflows/action.yml@main
+    with:
+      scope: "sharedservices"
+      cloud_provider: ${{ vars.CLOUD_PROVIDER }}
+      action: "plan"
+    secrets: inherit

@@ -1,0 +1,62 @@
+name: tf-router
+
+on:
+  workflow_call:
+    inputs:
+      scope:
+        description: 'Application to deliver services'
+        required: true
+        type: string
+      environment:
+        description: 'Application environment'
+        required: true
+        type: string
+      action:
+        description: 'Plan or Apply'
+        required: true
+        type: string
+
+jobs:
+  pre-deploy:
+    name: Pre Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      workdir: ${{ steps.select_workdir.outputs.workdir }}
+    steps:
+    - name: Select working directory
+      id: select_workdir
+      run: |
+        echo "workdir=./infra/${{ inputs.scope == 'sharedservices' && format('_{0}',inputs.scope) || format('{0}/{1}',inputs.scope,inputs.environment) }}" >> $GITHUB_OUTPUT
+
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    environment: production
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: ${{ needs.pre-deploy.outputs.workdir }}
+
+    - name: Terraform Format
+      run: terraform fmt -check
+      working-directory: ${{ needs.pre-deploy.outputs.workdir }}
+
+    - name: Terraform Plan
+      run: terraform plan -input=false
+      working-directory: ${{ needs.pre-deploy.outputs.workdir }}
