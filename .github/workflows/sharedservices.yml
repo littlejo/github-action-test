@@ -17,7 +17,7 @@ concurrency:
 jobs:
   call_terraform_router:
     name: Terraform Router
-    uses: littlejo/github-action-test/.github/workflows/action.yaml@toto-test
+    uses: littlejo/github-action-test/.github/workflows/action.yaml@main
     with:
       scope: "sharedservices"
       environment: "na"
