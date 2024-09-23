@@ -1,0 +1,83 @@
+name: tf-router
+
+on:
+  workflow_call:
+    inputs:
+      scope:
+        description: 'Application to deliver services'
+        required: true
+        type: string
+      environment:
+        description: 'Application environment'
+        required: true
+        type: string
+      action:
+        description: 'Plan or Apply'
+        required: true
+        type: string
+
+jobs:
+  pre-deploy:
+    name: Pre Deployment
+    runs-on: ubuntu-latest
+    outputs:
+      workdir: ${{ steps.select_workdir.outputs.workdir }}
+    steps:
+    - name: Select working directory
+      id: select_workdir
+      run: |
+        echo "workdir=./infra/${{ inputs.scope == 'sharedservices' && format('_{0}',inputs.scope) || format('{0}/{1}',inputs.scope,inputs.environment) }}" >> $GITHUB_OUTPUT
+
+  terraform:
+    name: 'Terraform'
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    environment: production
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ needs.pre-deploy.outputs.workdir }}
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Format
+      run: terraform fmt -check
+
+    - name: Terraform Plan
+      run: terraform plan -input=false -out=out.tf
+
+    - uses: terraform-linters/setup-tflint@v4
+      name: Setup TFLint
+      with:
+        tflint_version: v0.52.0
+
+    - name: Setup OPA
+      uses: open-policy-agent/setup-opa@v2
+      with:
+        version: latest
+
+    - name: Init TFLint
+      run: tflint --init
+      env:
+        # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Run TFLint
+      run: tflint -f compact
