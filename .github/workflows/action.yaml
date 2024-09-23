@@ -45,45 +45,69 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: check-directory
+      id: check-directory
+      run: |
+        set -x
+        workdir="${{ needs.pre-deploy.outputs.workdir }}"
+        dir_exist=false
+        if [[ -d "$workdir" ]]
+        then
+           dir_exist=true
+        fi
+        echo "DIR_EXIST=$dir_exist" >> $GITHUB_OUTPUT
+      working-directory: ${{ github.workspace }}
+
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
       with:
         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
     - name: Terraform Init
       run: terraform init
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Terraform Validate
       run: terraform validate
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Terraform Format
       run: terraform fmt -check
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Terraform Plan
       run: terraform plan -input=false -out=out
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - uses: terraform-linters/setup-tflint@v4
       name: Setup TFLint
       with:
         tflint_version: v0.52.0
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Setup OPA
       uses: open-policy-agent/setup-opa@v2
       with:
         version: latest
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Init TFLint
       run: tflint --init
       env:
         # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
         GITHUB_TOKEN: ${{ github.token }}
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Run TFLint
       run: tflint -f compact
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Terraform Format
       run: terraform fmt -check
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
 
     - name: Terraform Plan
       run: terraform plan -input=false
+      if: steps.check-directory.outputs.DIR_EXIST == 'true'
