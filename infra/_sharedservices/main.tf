@@ -3,13 +3,7 @@ resource "local_file" "foo" {
   filename = "${path.module}/foo.bar"
 }
 
-terraform { 
-  cloud { 
-    
-    organization = "test-jli2" 
-
-    workspaces { 
-      name = "test-github-action" 
-    } 
-  } 
+module "helm" {
+  source   = "github.com/littlejo/terraform-helm-images-set-values"
+  repo_url = "cilium/cilium"
 }
